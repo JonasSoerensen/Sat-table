@@ -11,10 +11,7 @@ import qualified Text.Megaparsec.Char.Lexer as L -- (1)
 import Data.Functor.Compose (Compose (Compose, getCompose))
 import Control.Monad.State.Lazy (MonadState (..), evalState)
 import Data.List (intercalate)
-import Data.Map (insert, lookup)
 import Prelude hiding (lookup)
-import Text.Layout.Table
-import Control.Monad (void)
 
 data SatF v a =  Var v | Not a | And a a | Or a a deriving (Show, Eq, Functor, Traversable, Foldable)
 type Sat = Fix (SatF String)
@@ -76,15 +73,11 @@ type SatI = Fix (Compose Tag (SatF String))
 
 index :: Sat -> SatI
 index sat = evalState (foldFixM folder sat) 0
-  where
-    folder expr = do
-      idx <- get
-      case expr of
-        Var x -> do
-          return . Fix . Compose $ Name x expr
-        _ -> do
-          put $ idx + 1
-          return . Fix . Compose $ Index idx expr
+  where    
+    folder expr = get >>= fmap (Fix . Compose) . f expr
+
+    f expr@(Var x) _ = return $ Name x expr
+    f expr idx = put (idx + 1) >> return (Index idx expr)
 
 type Variable = Int
 
@@ -101,10 +94,10 @@ astMatch negated normal ast = [normal <$ x] : inner negated normal ast
         g a@(Index _ (Or s'@(Compose b) s''@(Compose c))) = [t <$ a, f <$ b] : [t <$ a, f <$ c] : [f <$ a, t <$ b, t <$ c] : inner' s' ++ inner' s''
         g _ = []
 
-data State = F | T 
-instance Show State where
-  show F = "¬"
-  show T = ""
+data Prefix = Inverse | Normal
+instance Show Prefix where
+  show Inverse = "¬"
+  show Normal = ""
 
 newtype CNF a = CNF [[Tag a]]
 
@@ -113,4 +106,5 @@ instance Show a => Show (CNF a) where
     where
       par x = "( " ++ x ++ " )"
 
-tseitin = CNF . astMatch F T . index
+tseitin :: Sat -> CNF Prefix
+tseitin = CNF . astMatch Inverse Normal . index
