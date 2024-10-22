@@ -74,7 +74,10 @@ executable Sat-table
                     ,parser-combinators
                     ,text
                     ,data-fix
+                    ,mtl
                     ,optparse-applicative
+                    ,table-layout
+                    ,containers
 
     -- Directories containing source files.
     hs-source-dirs:   app

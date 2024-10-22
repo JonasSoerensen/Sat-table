@@ -1,12 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main where
-import Sat (parser)
+import Sat (parser, tseitin)
 import Options.Applicative
 import Text.Megaparsec (runParser)
 import Data.Text (pack)
-import Data.Fix (foldFix)
-
 
 newtype Args = Args
   { program :: String }
@@ -16,7 +12,11 @@ args = Args
       <$> argument str (metavar "Expression")
 
 greet :: Args -> IO ()
-greet (Args p) = print $ foldFix show <$> runParser parser "" (pack p)
+greet (Args p)  
+  | (Right x) <- ast = print x
+  | (Left err) <- ast = print err
+  where
+    ast = tseitin <$> runParser parser "" (pack p)
 
 main :: IO ()
 main = greet =<< execParser opts
